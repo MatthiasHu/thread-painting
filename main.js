@@ -1,5 +1,8 @@
 "use strict";
 
+// line strength in pixels
+const strength = 0.2;
+
 let canvasIn = null;
 let canvasOut = null;
 let ctxIn = null;
@@ -37,17 +40,131 @@ function handleNewImage(img) {
   canvasOut.height = h;
   ctxIn.drawImage(img, 0, 0);
 
+  ctxOut.fillStyle = "white";
+  ctxOut.fillRect(0, 0, w, h);
+
   pins = borderPins(w, h);
 
-  paintingProcess();
+  convertInputCanvasToGrey();
+
+  drawPins();
+
+  setTimeout(function () {paintingProcess(0);}, 1);
 }
 
-function borderPins() {
-  // TODO
+function convertInputCanvasToGrey() {
+  const w = canvasIn.width;
+  const h = canvasIn.height;
+
+  for (let x=0; x<w; x++) {
+    for (let y=0; y<h; y++) {
+      putPixel(ctxIn, [x, y], RGBToGrey(getPixelRGB(ctxIn, [x, y])));
+    }
+  }
 }
 
-function paintingProcess() {
-  // TODO
+function drawPins() {
+  for (let i=0; i<pins.length; i++) {
+    putPixelRGB(ctxIn, pins[i], [1, 0, 0]);
+  }
+}
+
+function putPixel(ctx, p, v) {
+  putPixelRGB(ctx, p, [v, v, v]);
+}
+function putPixelRGB(ctx, p, rgb) {
+  let data = ctx.createImageData(1, 1);
+  data.data[0] = rgb[0]*255;
+  data.data[1] = rgb[1]*255;
+  data.data[2] = rgb[2]*255;
+  data.data[3] = 255;
+  ctx.putImageData(data, p[0], p[1]);
+}
+function getPixelRGB(ctx, p) {
+  let data = ctx.getImageData(p[0], p[1], 1, 1);
+  return [data.data[0]/255, data.data[1]/255, data.data[2]/255];
+}
+function RGBToGrey(rgb) {
+  return (rgb[0]+rgb[1]+rgb[2])/3;
+}
+function getPixel(ctx, p) {
+  return RGBToGrey(getPixelRGB(ctx, p));
+}
+
+function borderPins(w, h) {
+  const d = 20;
+
+  let pins = [];
+
+  for (let x = d*2; x <= w-d*2; x+=d) {
+    pins.push([x, d]);
+    pins.push([x, h-d]);
+  }
+  for (let y = d*2; y <= h-d*2; y+=d) {
+    pins.push([d, y]);
+    pins.push([w-d, y]);
+  }
+
+  return pins;
+}
+
+function paintingProcess(pin) {
+  console.log("at pin " + pin);
+
+  let bestTargetPin = -1;
+  let bestScore = 0;
+
+  for (let i=0; i<pins.length; i++) {
+    if (i != pin) {
+      const score = scoreLine(pins[pin], pins[i]);
+      console.log("pin " + i + " has score " + score);
+      if (score > bestScore) {
+        bestScore = score;
+        bestTargetPin = i;
+      }
+    }
+  }
+
+  if (bestTargetPin >= 0) {
+    drawLine(pins[pin], pins[bestTargetPin]);
+    setTimeout(function () {paintingProcess(bestTargetPin);}, 1);
+  }
+  else {
+    console.log("Done. No positive score from here.");
+  }
+}
+
+function scoreLine(from, to) {
+  const shadings = lineShadings(from, to, strength);
+  let total = vmag(vminus(to, from))*strength;
+
+  let totalScore = 0;
+
+  for (let i=0; i<shadings.length; i++) {
+    const score = scoreShading(shadings[i]);
+    totalScore += score;
+  }
+
+  return totalScore/total;
+}
+
+function scoreShading(sh) {
+  const a = getPixel(ctxIn, sh.pixel);
+  const b = getPixel(ctxOut, sh.pixel);
+  const d = sh.additionalShade;
+
+  return (b - a)**2 - (Math.max(0, b-d) - a)**2;
+}
+
+function drawLine(from, to) {
+  const shadings = lineShadings(from, to, strength);
+
+  for (let i=0; i<shadings.length; i++) {
+    const sh = shadings[i];
+    const d = sh.additionalShade;
+    const old = getPixel(ctxOut, sh.pixel);
+    putPixel(ctxOut, sh.pixel, Math.max(0, old - d));
+  }
 }
 
 
