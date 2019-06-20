@@ -1,3 +1,55 @@
+"use strict";
+
+let canvasIn = null;
+let canvasOut = null;
+let ctxIn = null;
+let ctxOut = null;
+let pins = [];
+
+function onLoad() {
+  document.getElementById("input_image_file").onchange =
+    function (e) {onFileChange(e);}
+  canvasIn = document.getElementById("canvas_in");
+  canvasOut = document.getElementById("canvas_out");
+  ctxIn = canvasIn.getContext("2d");
+  ctxOut = canvasOut.getContext("2d");
+}
+
+function onFileChange(e) {
+  let img = document.createElement("img");
+  let fr = new FileReader();
+  fr.onload = function () {
+    img.src = fr.result;
+    img.onload = function () {
+      handleNewImage(img);
+      document.getElementById("canvas_in")
+    };
+  };
+  fr.readAsDataURL(e.target.files[0]);
+}
+
+function handleNewImage(img) {
+  const w = img.width;
+  const h = img.height;
+  canvasIn.width = w;
+  canvasIn.height = h;
+  canvasOut.width = w;
+  canvasOut.height = h;
+  ctxIn.drawImage(img, 0, 0);
+
+  pins = borderPins(w, h);
+
+  paintingProcess();
+}
+
+function borderPins() {
+  // TODO
+}
+
+function paintingProcess() {
+  // TODO
+}
+
 
 // Whole-number coordinates represent centers of pixels.
 
@@ -55,6 +107,9 @@ function lineShadings(from, to, strength) {
     , additionalShade: strength*vmag(vminus(s.to, s.from))
     }));
 }
+
+
+// Vector functions.
 
 function vplus(a, b) {
   return [a[0]+b[0], a[1]+b[1]];
