@@ -43,7 +43,8 @@ function handleNewImage(img) {
   ctxOut.fillStyle = "white";
   ctxOut.fillRect(0, 0, w, h);
 
-  pins = borderPins(w, h);
+  pins = circlePins(w, h);
+  console.log(pins.length + " pins");
 
   convertInputCanvasToGrey();
 
@@ -92,7 +93,7 @@ function getPixel(ctx, p) {
 }
 
 function borderPins(w, h) {
-  const d = 20;
+  const d = 8;
 
   let pins = [];
 
@@ -108,6 +109,21 @@ function borderPins(w, h) {
   return pins;
 }
 
+function circlePins(w, h) {
+  const n = 100;
+  const r = Math.min(w/2, h/2) - 5
+  const tau = 2*Math.PI;
+
+  let pins = [];
+
+  for (let i=0; i<n; i++) {
+    const alpha = i*tau/n;
+    pins.push([w/2 + Math.cos(alpha)*r, h/2 + Math.sin(alpha)*r]);
+  }
+
+  return pins;
+}
+
 function paintingProcess(pin) {
   console.log("at pin " + pin);
 
@@ -117,7 +133,6 @@ function paintingProcess(pin) {
   for (let i=0; i<pins.length; i++) {
     if (i != pin) {
       const score = scoreLine(pins[pin], pins[i]);
-      console.log("pin " + i + " has score " + score);
       if (score > bestScore) {
         bestScore = score;
         bestTargetPin = i;
