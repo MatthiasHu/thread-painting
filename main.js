@@ -1,7 +1,7 @@
 "use strict";
 
 // line strength in pixels
-const strength = 0.2;
+const strength = 0.1;
 
 let canvasIn = null;
 let canvasOut = null;
@@ -10,7 +10,10 @@ let ctxOut = null;
 let w = 0;
 let h = 0;
 let outputPinNumbers = null;
+let outputInfo = null;
 let pins = [];
+
+let info = {lines: 0, totalLength: 0};
 
 function onLoad() {
   document.getElementById("input_image_file").onchange =
@@ -18,6 +21,7 @@ function onLoad() {
   canvasIn = document.getElementById("canvas_in");
   canvasOut = document.getElementById("canvas_out");
   outputPinNumbers = document.getElementById("output_pin_numbers");
+  outputInfo = document.getElementById("output_info");
   ctxIn = canvasIn.getContext("2d");
   ctxOut = canvasOut.getContext("2d");
 }
@@ -50,7 +54,7 @@ function handleNewImage(img) {
   ctxIn.imageData = ctxIn.getImageData(0, 0, w, h);
   ctxOut.imageData = ctxOut.getImageData(0, 0, w, h);
 
-  pins = circlePins(w, h);
+  pins = addNoiseToPins(5, circlePins(w, h));
   console.log(pins.length + " pins");
 
   convertInputCanvasToGrey();
@@ -61,9 +65,6 @@ function handleNewImage(img) {
 }
 
 function convertInputCanvasToGrey() {
-  const w = canvasIn.width;
-  const h = canvasIn.height;
-
   for (let x=0; x<w; x++) {
     for (let y=0; y<h; y++) {
       putPixel(ctxIn, [x, y], RGBToGrey(getPixelRGB(ctxIn, [x, y])));
@@ -75,9 +76,17 @@ function convertInputCanvasToGrey() {
 
 function drawPins() {
   for (let i=0; i<pins.length; i++) {
-    putPixelRGB(ctxIn, pins[i], [1, 0, 0]);
+    putPixelRGB(ctxIn, vRound(pins[i]), [1, 0, 0]);
   }
   putImageData(ctxIn);
+}
+
+function updateInfo() {
+  outputInfo.innerHTML =
+    "size: " + w + "x" + h +
+    ", pins: " + pins.length +
+    ", lines: " + info.lines +
+    ", total length: " + Math.round(info.totalLength);
 }
 
 // always call this after putting pixels
@@ -144,8 +153,15 @@ function circlePins(w, h) {
   return pins;
 }
 
+function addNoiseToPins(s, pins) {
+  for (let i=0; i<pins.length; i++) {
+    pins[i][0] += s*(Math.random()+Math.random()-1);
+    pins[i][1] += s*(Math.random()+Math.random()-1);
+  }
+  return pins;
+}
+
 function paintingProcess(pin) {
-  console.log("at pin " + pin);
   outputPinNumbers.innerHTML += "" + pin + ", ";
 
   let bestTargetPin = -1;
@@ -163,12 +179,16 @@ function paintingProcess(pin) {
 
   if (bestTargetPin >= 0) {
     drawLine(pins[pin], pins[bestTargetPin]);
+    info.lines += 1;
+    info.totalLength += vmag(vminus(pins[bestTargetPin], pins[pin]));
     setTimeout(function () {paintingProcess(bestTargetPin);}, 1);
   }
   else {
     console.log("Done. No positive score from here.");
     outputPinNumbers.innerHTML += "Done.";
   }
+
+  updateInfo();
 }
 
 function scoreLine(from, to) {
@@ -284,4 +304,8 @@ function vmag(a) {
 }
 function vnormalize(a) {
   return vscale(1/vmag(a), a);
+}
+
+function vRound(a) {
+  return [Math.round(a[0]), Math.round(a[1])];
 }
