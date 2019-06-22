@@ -7,6 +7,9 @@ let canvasIn = null;
 let canvasOut = null;
 let ctxIn = null;
 let ctxOut = null;
+let w = 0;
+let h = 0;
+let outputPinNumbers = null;
 let pins = [];
 
 function onLoad() {
@@ -14,6 +17,7 @@ function onLoad() {
     function (e) {onFileChange(e);}
   canvasIn = document.getElementById("canvas_in");
   canvasOut = document.getElementById("canvas_out");
+  outputPinNumbers = document.getElementById("output_pin_numbers");
   ctxIn = canvasIn.getContext("2d");
   ctxOut = canvasOut.getContext("2d");
 }
@@ -32,8 +36,8 @@ function onFileChange(e) {
 }
 
 function handleNewImage(img) {
-  const w = img.width;
-  const h = img.height;
+  w = img.width;
+  h = img.height;
   canvasIn.width = w;
   canvasIn.height = h;
   canvasOut.width = w;
@@ -42,6 +46,9 @@ function handleNewImage(img) {
 
   ctxOut.fillStyle = "white";
   ctxOut.fillRect(0, 0, w, h);
+
+  ctxIn.imageData = ctxIn.getImageData(0, 0, w, h);
+  ctxOut.imageData = ctxOut.getImageData(0, 0, w, h);
 
   pins = circlePins(w, h);
   console.log(pins.length + " pins");
@@ -62,28 +69,41 @@ function convertInputCanvasToGrey() {
       putPixel(ctxIn, [x, y], RGBToGrey(getPixelRGB(ctxIn, [x, y])));
     }
   }
+
+  putImageData(ctxIn);
 }
 
 function drawPins() {
   for (let i=0; i<pins.length; i++) {
     putPixelRGB(ctxIn, pins[i], [1, 0, 0]);
   }
+  putImageData(ctxIn);
+}
+
+// always call this after putting pixels
+function putImageData(ctx) {
+  ctx.putImageData(ctx.imageData, 0, 0);
 }
 
 function putPixel(ctx, p, v) {
   putPixelRGB(ctx, p, [v, v, v]);
 }
 function putPixelRGB(ctx, p, rgb) {
-  let data = ctx.createImageData(1, 1);
-  data.data[0] = rgb[0]*255;
-  data.data[1] = rgb[1]*255;
-  data.data[2] = rgb[2]*255;
-  data.data[3] = 255;
-  ctx.putImageData(data, p[0], p[1]);
+  let data = ctx.imageData.data;
+  const n = p[0] + p[1]*w;
+  data[n*4 + 0] = rgb[0]*255;
+  data[n*4 + 1] = rgb[1]*255;
+  data[n*4 + 2] = rgb[2]*255;
+  data[n*4 + 3] = 255;
 }
 function getPixelRGB(ctx, p) {
-  let data = ctx.getImageData(p[0], p[1], 1, 1);
-  return [data.data[0]/255, data.data[1]/255, data.data[2]/255];
+  let data = ctx.imageData.data;
+  const n = p[0] + p[1]*w;
+  return (
+    [ data[n*4 + 0]/255
+    , data[n*4 + 1]/255
+    , data[n*4 + 2]/255
+    ]);
 }
 function RGBToGrey(rgb) {
   return (rgb[0]+rgb[1]+rgb[2])/3;
@@ -126,6 +146,7 @@ function circlePins(w, h) {
 
 function paintingProcess(pin) {
   console.log("at pin " + pin);
+  outputPinNumbers.innerHTML += "" + pin + ", ";
 
   let bestTargetPin = -1;
   let bestScore = 0;
@@ -146,6 +167,7 @@ function paintingProcess(pin) {
   }
   else {
     console.log("Done. No positive score from here.");
+    outputPinNumbers.innerHTML += "Done.";
   }
 }
 
@@ -180,6 +202,8 @@ function drawLine(from, to) {
     const old = getPixel(ctxOut, sh.pixel);
     putPixel(ctxOut, sh.pixel, Math.max(0, old - d));
   }
+
+  putImageData(ctxOut);
 }
 
 
